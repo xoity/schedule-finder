@@ -10,6 +10,7 @@ import pandas as pd
 import re
 import traceback
 import logging
+import getpass
 
 load_dotenv()
 
@@ -50,14 +51,14 @@ async def main():
         )
 
         username = input("Enter your CUD Portal username: ")
-        password = input("Enter your CUD Portal password: ")
+        password = getpass.getpass("Enter your CUD Portal password: ")
         
         # Define the task for the Browser Use agent
-        task = f"""
+        task = """
         Follow these steps precisely:
         
         1. Navigate to https://cudportal.cud.ac.ae/student/login.asp
-        2. Login with username {username} and password {password}
+        2. Login with username and password provided
         3. Wait for the dashboard to load completely
         4. Find and click on the menu item related to "Course Registration"
         5. Find and click on "Course Offerings" link or button
@@ -81,10 +82,17 @@ async def main():
         
         Return the data as a JSON array of objects with these exact field names.
         """
+
+        sensitive_data = {
+            'user': username,
+            "password": password,
+        }
+
         logger.info("Initializing browser automation agent...")
         agent = Agent(
             task=task,
             llm=llm,
+            sensitive_data=sensitive_data
         )
         
         logger.info("Starting course data extraction from CUD portal...")
