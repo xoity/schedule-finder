@@ -1,0 +1,131 @@
+from langchain_google_genai import ChatGoogleGenerativeAI
+from browser_use import Agent
+from pydantic import SecretStr
+import os
+import asyncio
+from dotenv import load_dotenv
+import json
+import sys
+import pandas as pd
+import re
+load_dotenv()
+# Function to extract course data from the agent's results
+def process_extracted_data(result):
+    """Process the data returned from the agent run"""
+    try:
+        # Try to find and parse JSON in the result
+        json_match = re.search(r'\[[\s\S]*\]', result)
+        if json_match:
+            json_str = json_match.group(0)
+            return json.loads(json_str)
+        else:
+            try:
+                # If no clear JSON pattern, try parsing the whole response
+                return json.loads(result)
+            except json.JSONDecodeError:
+                print("Could not parse result as JSON")
+                return None
+    except Exception as e:
+        print(f"Error processing extraction: {e}")
+        print(f"Raw result: {result[:200]}...")
+        return None
+
+# Main function to run the script
+async def main():
+    try:
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp", 
+            api_key=SecretStr(os.getenv('GEMINI_API_KEY'))
+        )
+
+        username = input("Enter your CUD Portal username: ")
+        password = input("Enter your CUD Portal password: ")
+        
+        # Define the task for the Browser Use agent
+        task = f"""
+        Follow these steps precisely:
+        
+        1. Navigate to https://cudportal.cud.ac.ae/student/login.asp
+        2. Login with username {username} and password {password}
+        3. Wait for the dashboard to load completely
+        4. Find and click on the menu item related to "Registration" or "Course Registration"
+        5. Find and click on "Course Offerings" link or button
+        6. Wait for the page to load completely
+        7. Find and click on "Show Filter" button
+        8. Wait for filter options to appear
+        9. Select "SEAST" from the Divisions dropdown/selection field
+        10. Click the "Apply Filter" button
+        11. Wait for the filtered results to load completely
+        12. Extract ALL course information from the table in this format:
+            - Course code
+            - Course name
+            - Credits
+            - Instructor
+            - Room
+            - Days
+            - Start Time
+            - End Time
+            - Max Enrollment
+            - Total Enrollment
+        
+        Return the data as a JSON array of objects with these exact field names.
+        """
+        
+        try:
+            agent = Agent(
+                task=task,
+                llm=llm,
+            )
+            
+            result = await agent.run()
+            
+            # Process the extracted data
+            courses = process_extracted_data(result)
+            
+            # Save to CSV if we have data
+            if courses:
+                df = pd.DataFrame(courses)
+                csv_path = os.path.join(os.path.dirname(__file__), 'course_offerings.csv')
+                df.to_csv(csv_path, index=False)
+                print(f"Course data saved to {csv_path}")
+                
+                # Also save to Excel for convenience
+                excel_path = os.path.join(os.path.dirname(__file__), 'course_offerings.xlsx')
+                df.to_excel(excel_path, index=False)
+                print(f"Course data also saved to {excel_path}")
+            else:
+                print("No course data was extracted or there was an error.")
+                print("Raw agent result:")
+                print(result)
+        except Exception as e:
+            print(f"Browser Use Agent error: {e}")
+            print("This could be due to missing browser dependencies or other issues.")
+            print("Try installing the missing libraries listed in the Playwright installation output.")
+            
+            print("Attempting fallback method...")
+            try:
+                agent = Agent(
+                    task="Navigate to https://cudportal.cud.ac.ae/student/login.asp",
+                    llm=llm,
+                    headless=False,
+                    browser="chromium",
+                )
+                
+                await agent.run()
+                print("Basic navigation test succeeded. Now try running the full script again.")
+            except Exception as fallback_error:
+                print(f"Fallback also failed: {fallback_error}")
+            
+            return
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nScript terminated by user.")
+        sys.exit(0)
