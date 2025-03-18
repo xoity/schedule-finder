@@ -22,7 +22,7 @@ llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash-exp', api_key=SecretStr(os.
 
 # Create agent with the model
 agent = Agent(
-    task="open chrome and search for the best restaurants in Dubai",
+    task="open chrome and search for the best restaurants in Dubai and list their name and rating",
     llm=llm
 )
 

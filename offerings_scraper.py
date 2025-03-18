@@ -21,25 +21,51 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 # Function to extract course data from the agent's results
 def process_extracted_data(result):
     """Process the data returned from the agent run"""
     try:
-        # Try to find and parse JSON in the result
-        json_match = re.search(r'\[[\s\S]*\]', result)
-        if json_match:
-            json_str = json_match.group(0)
-            return json.loads(json_str)
-        else:
-            try:
-                # If no clear JSON pattern, try parsing the whole response
-                return json.loads(result)
-            except json.JSONDecodeError:
-                logger.error("Could not parse result as JSON")
-                return None
+        # Handle result as AgentHistoryList object
+        if str(type(result).__name__) == 'AgentHistoryList':
+            logger.info("Processing AgentHistoryList result")
+            
+            # Iterate through the agent history to find extraction results
+            for step in result:
+                if hasattr(step, 'controller_response') and step.controller_response:
+                    response = step.controller_response
+                    # Check if this is an extract_content response
+                    if 'Extracted from page' in str(response):
+                        # Look for JSON content between triple backticks
+                        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', str(response))
+                        if json_match:
+                            json_str = json_match.group(1)
+                            return json.loads(json_str)
+            
+            logger.error("Could not find JSON data in AgentHistoryList")
+            return None
+        
+        # Handle result as string (original behavior)
+        elif isinstance(result, str):
+            json_match = re.search(r'\[[\s\S]*\]', result)
+            if json_match:
+                json_str = json_match.group(0)
+                return json.loads(json_str)
+            else:
+                try:
+                    # If no clear JSON pattern, try parsing the whole response
+                    return json.loads(result)
+                except json.JSONDecodeError:
+                    logger.error("Could not parse result as JSON")
+                    return None
+        
+        # Fallback for unexpected result type
+        logger.error("Unexpected result type: %s", type(result).__name__)
+        return None
+        
     except Exception as e:
         logger.error("Error processing extraction: %s", e)
-        logger.debug("Raw result: %s...", result[:200])
+        logger.error("Exception details: %s", traceback.format_exc())
         return None
 
 # Main function to run the script
@@ -68,7 +94,7 @@ async def main():
         9. Select "SEAST" from the Divisions dropdown/selection field
         10. Click the "Apply Filter" button
         11. Wait for the filtered results to load completely
-        12. Extract ALL course information from the table in this format:
+        12. Extract ALL course information from the table in this format and return as a json:
             - Course code
             - Course name
             - Credits
