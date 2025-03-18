@@ -1,6 +1,7 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from browser_use import Agent
-from pydantic import SecretStr
+from browser_use import Agent, Controller
+from pydantic import BaseModel, SecretStr, Field
+from typing import List
 import os
 import asyncio
 from dotenv import load_dotenv
@@ -21,51 +22,89 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Define Pydantic models for structured output
+class Course(BaseModel):
+    course_code: str = Field(description="The course code identifier")
+    course_name: str = Field(description="The name of the course")
+    credits: str = Field(description="Number of credits for the course")
+    instructor: str = Field(description="Name of the instructor")
+    room: str = Field(description="Room where the course is held")
+    days: str = Field(description="Days when the course meets (e.g., M, T, W)")
+    start_time: str = Field(description="Start time of the course")
+    end_time: str = Field(description="End time of the course")
+    max_enrollment: str = Field(description="Maximum enrollment allowed")
+    total_enrollment: str = Field(description="Current total enrollment")
 
-# Function to extract course data from the agent's results
-def process_extracted_data(result):
-    """Process the data returned from the agent run"""
+class CourseOfferings(BaseModel):
+    courses: List[Course] = Field(description="List of course offerings")
+
+# Function to process the agent's result
+def process_result(result):
+    """Process the structured result from the agent"""
     try:
-        # Handle result as AgentHistoryList object
-        if str(type(result).__name__) == 'AgentHistoryList':
-            logger.info("Processing AgentHistoryList result")
-            
-            # Iterate through the agent history to find extraction results
-            for step in result:
-                if hasattr(step, 'controller_response') and step.controller_response:
-                    response = step.controller_response
-                    # Check if this is an extract_content response
-                    if 'Extracted from page' in str(response):
-                        # Look for JSON content between triple backticks
-                        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', str(response))
-                        if json_match:
-                            json_str = json_match.group(1)
-                            return json.loads(json_str)
-            
-            logger.error("Could not find JSON data in AgentHistoryList")
-            return None
-        
-        # Handle result as string (original behavior)
-        elif isinstance(result, str):
-            json_match = re.search(r'\[[\s\S]*\]', result)
-            if json_match:
-                json_str = json_match.group(0)
-                return json.loads(json_str)
+        # For AgentHistoryList result type
+        if hasattr(result, "final_result"):
+            # Get the final structured result
+            final_result = result.final_result()
+            if final_result:
+                # Parse the JSON result into our Pydantic model
+                return CourseOfferings.model_validate_json(final_result)
             else:
-                try:
-                    # If no clear JSON pattern, try parsing the whole response
-                    return json.loads(result)
-                except json.JSONDecodeError:
-                    logger.error("Could not parse result as JSON")
-                    return None
+                logger.error("No final result available in agent history")
         
-        # Fallback for unexpected result type
-        logger.error("Unexpected result type: %s", type(result).__name__)
+        # For non-structured results, fallback to extracting from response
+        if hasattr(result, "get_all_output_messages"):
+            messages = result.get_all_output_messages()
+            for message in messages:
+                if hasattr(message, "content"):
+                    content = message.content
+                    # Try to extract JSON from content
+                    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', content)
+                    if json_match:
+                        json_str = json_match.group(1)
+                        # Try to parse as CourseOfferings
+                        try:
+                            courses_data = json.loads(json_str)
+                            # If it's an array of courses, wrap it in the expected structure
+                            if isinstance(courses_data, list):
+                                return CourseOfferings(courses=courses_data)
+                            return CourseOfferings.model_validate(courses_data)
+                        except Exception as e:
+                            logger.error(f"Error parsing JSON: {e}")
+        
+        # Extract from controller response if available
+        for step in result:
+            if hasattr(step, 'controller_response') and step.controller_response:
+                response = step.controller_response
+                if 'Extracted from page' in str(response):
+                    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', str(response))
+                    if json_match:
+                        json_str = json_match.group(1)
+                        courses_data = json.loads(json_str)
+                        # Convert keys to snake_case if they're in different format
+                        formatted_courses = []
+                        for course in courses_data:
+                            formatted_course = {
+                                "course_code": course.get("Course Code", ""),
+                                "course_name": course.get("Course Name", ""),
+                                "credits": course.get("Credits", ""),
+                                "instructor": course.get("Instructor", ""),
+                                "room": course.get("Room", ""),
+                                "days": course.get("Days", ""),
+                                "start_time": course.get("Start Time", ""),
+                                "end_time": course.get("End Time", ""),
+                                "max_enrollment": course.get("Max Enrollment", ""),
+                                "total_enrollment": course.get("Total Enrollment", "")
+                            }
+                            formatted_courses.append(formatted_course)
+                        return CourseOfferings(courses=formatted_courses)
+        
+        logger.error("Could not extract course data from agent result")
         return None
         
     except Exception as e:
-        logger.error("Error processing extraction: %s", e)
-        logger.error("Exception details: %s", traceback.format_exc())
+        logger.error(f"Error processing result: {e}")
+        logger.error(traceback.format_exc())
         return None
 
 # Main function to run the script
@@ -94,19 +133,19 @@ async def main():
         9. Select "SEAST" from the Divisions dropdown/selection field
         10. Click the "Apply Filter" button
         11. Wait for the filtered results to load completely
-        12. Extract ALL course information from the table in this format and return as a json:
-            - Course code
-            - Course name
-            - Credits
-            - Instructor
-            - Room
-            - Days
-            - Start Time
-            - End Time
-            - Max Enrollment
-            - Total Enrollment
+        12. Extract ALL course information from the table with these field names:
+            - course_code
+            - course_name
+            - credits
+            - instructor
+            - room
+            - days
+            - start_time
+            - end_time
+            - max_enrollment
+            - total_enrollment
         
-        Return the data as a JSON array of objects with these exact field names.
+        Return the data as a JSON array of course objects with these exact field names.
         """
 
         sensitive_data = {
@@ -114,39 +153,45 @@ async def main():
             "password": password,
         }
 
+        # Set up controller with our output model
+        controller = Controller(output_model=CourseOfferings)
+
         logger.info("Initializing browser automation agent...")
         agent = Agent(
             task=task,
             llm=llm,
-            sensitive_data=sensitive_data
+            sensitive_data=sensitive_data,
+            controller=controller
         )
         
         logger.info("Starting course data extraction from CUD portal...")
         result = await agent.run()
         
-        # Process the extracted data
-        courses = process_extracted_data(result)
+        # Process the result
+        course_offerings = process_result(result)
         
         # Save to CSV if we have data
-        if courses:
-            df = pd.DataFrame(courses)
-            csv_path = os.path.join(os.path.dirname(__file__), 'course_offerings.csv')
+        if course_offerings and course_offerings.courses:
+            # Convert Pydantic model to DataFrame
+            df = pd.DataFrame([course.model_dump() for course in course_offerings.courses])
+            
+            # Save to results.csv as requested
+            csv_path = os.path.join(os.path.dirname(__file__), 'results.csv')
             df.to_csv(csv_path, index=False)
-            logger.info("Course data saved to %s", csv_path)
+            logger.info(f"Course data saved to {csv_path}")
             
             # Also save to Excel for convenience
             excel_path = os.path.join(os.path.dirname(__file__), 'course_offerings.xlsx')
             df.to_excel(excel_path, index=False)
-            logger.info("Course data also saved to %s", excel_path)
+            logger.info(f"Course data also saved to {excel_path}")
+            
+            logger.info(f"Retrieved {len(course_offerings.courses)} courses")
         else:
             logger.error("No course data was extracted or there was an error.")
-            logger.debug("Raw agent result:")
-            logger.debug("%s", result)
-        return
         
     except Exception as e:
-        logger.error("Error: %s", e)
-        logger.error("%s", traceback.format_exc())
+        logger.error(f"Error: {e}")
+        logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
     try:
