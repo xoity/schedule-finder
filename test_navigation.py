@@ -1,31 +1,27 @@
-#!/usr/bin/env python3
-import asyncio
+from langchain_google_genai import ChatGoogleGenerativeAI
 from browser_use import Agent
-from langchain_ollama import ChatOllama
+from pydantic import SecretStr
+import os
+import asyncio
+from dotenv import load_dotenv
+load_dotenv()
 
-async def main():
-    print("Initializing Qwen2.5 model through Ollama...")
-    llm = ChatOllama(model="qwen2.5", num_ctx=32000)
-    
-    # Create a very simple task with explicit URL navigation
-    task = "Visit https://cudportal.cud.ac.ae/student/login.asp and tell me the page title"
-    
-    # Configure the agent with proper parameters
-    print("Creating Browser Use agent...")
-    agent = Agent(
-        task=task,
-        llm=llm,
-    )
-    
-    print("Running agent to test navigation...")
-    try:
-        result = await agent.run()
-        print("Agent returned result:")
-        print(result)
-    except Exception as e:
-        print(f"Error running agent: {e}")
-        import traceback
-        traceback.print_exc()
+api_key = os.getenv("GEMINI_API_KEY")
 
+# Initialize the model
+llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash-exp', api_key=SecretStr(os.getenv('GEMINI_API_KEY')))
+
+# Create agent with the model
+agent = Agent(
+    task="open chrome and search for the best restaurants in Dubai",
+    llm=llm
+)
+
+# Define async function to run the agent
+async def run_agent():
+    result = await agent.run()
+    print(f"Task completed: {result}")
+
+# Run the async function
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(run_agent())
