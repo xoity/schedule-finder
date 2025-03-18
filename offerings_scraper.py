@@ -38,7 +38,6 @@ class Course(BaseModel):
 class CourseOfferings(BaseModel):
     courses: List[Course] = Field(description="List of course offerings")
 
-# Function to process the agent's result
 def process_result(result):
     """Process the structured result from the agent"""
     try:
@@ -118,8 +117,22 @@ async def main():
         username = input("Enter your CUD Portal username: ")
         password = getpass.getpass("Enter your CUD Portal password: ")
         
+        # TODO: there is no need to have in the "task" the square brackets, find a way to inclose them in [] here
+        course_code = input("Enter the course code to search for (or press Enter for None): ")
+        course_name = input("Enter the course name to search for (or press Enter for None): ")
+        credits = input("Enter the number of credits to search for (or press Enter for None): ")
+        instructor = input("Enter the instructor name to search for (or press Enter for None): ")
+        room = input("Enter the room to search for (or press Enter for None): ")
+        days = input("Enter the days to search for, MTWR (or press Enter for None): ")
+        start_time = input("Enter a minimum start time to search for (or press Enter for None): ")
+        end_time = input("Enter a maximum end time to search for (or press Enter for None): ")
+        max_enrollment = input("Enter the maximum enrollment to search for (or press Enter for None): ")
+        total_enrollment = input("Enter the total enrollment to search for (or press Enter for None): ")
+
+        
+        
         # Define the task for the Browser Use agent
-        task = """
+        task = f"""
         Follow these steps precisely:
         
         1. Navigate to https://cudportal.cud.ac.ae/student/login.asp
@@ -134,16 +147,18 @@ async def main():
         10. Click the "Apply Filter" button
         11. Wait for the filtered results to load completely
         12. Extract ALL course information from the table with these field names:
-            - course_code
-            - course_name
-            - credits
-            - instructor
-            - room
-            - days
-            - start_time
-            - end_time
-            - max_enrollment
-            - total_enrollment
+            - course_code {course_code}
+            - course_name {course_name}
+            - credits {credits}
+            - instructor {instructor}
+            - room {room}
+            - days {days}
+            - start_time {start_time}
+            - end_time {end_time}
+            - max_enrollment {max_enrollment}
+            - total_enrollment {total_enrollment}
+        
+        if there are multiple pages under SEAST, navigate to each page other page and extract the course information as per the previous field names
         
         Return the data as a JSON array of course objects with these exact field names.
         """
