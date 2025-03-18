@@ -8,7 +8,18 @@ import json
 import sys
 import pandas as pd
 import re
+import traceback
+import logging
+
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+)
+logger = logging.getLogger(__name__)
+
 # Function to extract course data from the agent's results
 def process_extracted_data(result):
     """Process the data returned from the agent run"""
@@ -23,11 +34,11 @@ def process_extracted_data(result):
                 # If no clear JSON pattern, try parsing the whole response
                 return json.loads(result)
             except json.JSONDecodeError:
-                print("Could not parse result as JSON")
+                logger.error("Could not parse result as JSON")
                 return None
     except Exception as e:
-        print(f"Error processing extraction: {e}")
-        print(f"Raw result: {result[:200]}...")
+        logger.error("Error processing extraction: %s", e)
+        logger.debug("Raw result: %s...", result[:200])
         return None
 
 # Main function to run the script
@@ -70,62 +81,42 @@ async def main():
         
         Return the data as a JSON array of objects with these exact field names.
         """
+        logger.info("Initializing browser automation agent...")
+        agent = Agent(
+            task=task,
+            llm=llm,
+        )
         
-        try:
-            agent = Agent(
-                task=task,
-                llm=llm,
-            )
+        logger.info("Starting course data extraction from CUD portal...")
+        result = await agent.run()
+        
+        # Process the extracted data
+        courses = process_extracted_data(result)
+        
+        # Save to CSV if we have data
+        if courses:
+            df = pd.DataFrame(courses)
+            csv_path = os.path.join(os.path.dirname(__file__), 'course_offerings.csv')
+            df.to_csv(csv_path, index=False)
+            logger.info("Course data saved to %s", csv_path)
             
-            result = await agent.run()
-            
-            # Process the extracted data
-            courses = process_extracted_data(result)
-            
-            # Save to CSV if we have data
-            if courses:
-                df = pd.DataFrame(courses)
-                csv_path = os.path.join(os.path.dirname(__file__), 'course_offerings.csv')
-                df.to_csv(csv_path, index=False)
-                print(f"Course data saved to {csv_path}")
-                
-                # Also save to Excel for convenience
-                excel_path = os.path.join(os.path.dirname(__file__), 'course_offerings.xlsx')
-                df.to_excel(excel_path, index=False)
-                print(f"Course data also saved to {excel_path}")
-            else:
-                print("No course data was extracted or there was an error.")
-                print("Raw agent result:")
-                print(result)
-        except Exception as e:
-            print(f"Browser Use Agent error: {e}")
-            print("This could be due to missing browser dependencies or other issues.")
-            print("Try installing the missing libraries listed in the Playwright installation output.")
-            
-            print("Attempting fallback method...")
-            try:
-                agent = Agent(
-                    task="Navigate to https://cudportal.cud.ac.ae/student/login.asp",
-                    llm=llm,
-                    headless=False,
-                    browser="chromium",
-                )
-                
-                await agent.run()
-                print("Basic navigation test succeeded. Now try running the full script again.")
-            except Exception as fallback_error:
-                print(f"Fallback also failed: {fallback_error}")
-            
-            return
+            # Also save to Excel for convenience
+            excel_path = os.path.join(os.path.dirname(__file__), 'course_offerings.xlsx')
+            df.to_excel(excel_path, index=False)
+            logger.info("Course data also saved to %s", excel_path)
+        else:
+            logger.error("No course data was extracted or there was an error.")
+            logger.debug("Raw agent result:")
+            logger.debug("%s", result)
+        return
         
     except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error("Error: %s", e)
+        logger.error("%s", traceback.format_exc())
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nScript terminated by user.")
+        logger.info("\nScript terminated by user.")
         sys.exit(0)

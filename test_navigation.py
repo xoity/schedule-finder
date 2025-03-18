@@ -4,7 +4,16 @@ from pydantic import SecretStr
 import os
 import asyncio
 from dotenv import load_dotenv
+import logging
+
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+)
+logger = logging.getLogger(__name__)
 
 api_key = os.getenv("GEMINI_API_KEY")
 
@@ -19,8 +28,9 @@ agent = Agent(
 
 # Define async function to run the agent
 async def run_agent():
+    logger.info("Starting browser automation test...")
     result = await agent.run()
-    print(f"Task completed: {result}")
+    logger.info("Task completed: %s", result)
 
 # Run the async function
 if __name__ == "__main__":

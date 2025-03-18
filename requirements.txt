@@ -1,3 +1,5 @@
 browser-use
 pandas
 openpyxl
+pydantic
+langchain_model_genai
