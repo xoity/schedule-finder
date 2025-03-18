@@ -59,7 +59,7 @@ async def main():
         1. Navigate to https://cudportal.cud.ac.ae/student/login.asp
         2. Login with username {username} and password {password}
         3. Wait for the dashboard to load completely
-        4. Find and click on the menu item related to "Registration" or "Course Registration"
+        4. Find and click on the menu item related to "Course Registration"
         5. Find and click on "Course Offerings" link or button
         6. Wait for the page to load completely
         7. Find and click on "Show Filter" button
