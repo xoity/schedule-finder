@@ -116,21 +116,50 @@ async def main():
 
         username = input("Enter your CUD Portal username: ")
         password = getpass.getpass("Enter your CUD Portal password: ")
-        
-        # TODO: there is no need to have in the "task" the square brackets, find a way to inclose them in [] here
-        course_code = input("Enter the course code to search for (or press Enter for None): ")
-        course_name = input("Enter the course name to search for (or press Enter for None): ")
-        credits = input("Enter the number of credits to search for (or press Enter for None): ")
-        instructor = input("Enter the instructor name to search for (or press Enter for None): ")
-        room = input("Enter the room to search for (or press Enter for None): ")
-        days = input("Enter the days to search for, MTWR (or press Enter for None): ")
-        start_time = input("Enter a minimum start time to search for (or press Enter for None): ")
-        end_time = input("Enter a maximum end time to search for (or press Enter for None): ")
-        max_enrollment = input("Enter the maximum enrollment to search for (or press Enter for None): ")
-        total_enrollment = input("Enter the total enrollment to search for (or press Enter for None): ")
 
-        
-        
+        # TODO: HELL NAH WHAT THE FUCK IS ALL THAT DOWN, FUCK NO WERE NOT HAVING THAT MUCH IF STATEMENTS, damn.. looking like a whole family tree bro
+        #btw this is done to save on credits, but def not memory or cpu
+
+        course_code = input("Enter the course code to search for (or press Enter for None): ")
+        if course_code:
+            course_code = f"[{course_code}]"
+            
+        course_name = input("Enter the course name to search for (or press Enter for None): ")
+        if course_name:
+            course_name = f"[{course_name}]"
+            
+        credits = input("Enter the number of credits to search for (or press Enter for None): ")
+        if credits:
+            credits = f"[{credits}]"
+            
+        instructor = input("Enter the instructor name to search for (or press Enter for None): ")
+        if instructor:
+            instructor = f"[{instructor}]"
+            
+        room = input("Enter the room to search for (or press Enter for None): ")
+        if room:
+            room = f"[{room}]"
+            
+        days = input("Enter the days to search for, MTWR (or press Enter for None): ")
+        if days:
+            days = f"[{days}]"
+            
+        start_time = input("Enter a minimum start time to search for (or press Enter for None): ")
+        if start_time:
+            start_time = f"[{start_time}]"
+            
+        end_time = input("Enter a maximum end time to search for (or press Enter for None): ")
+        if end_time:
+            end_time = f"[{end_time}]"
+            
+        max_enrollment = input("Enter the maximum enrollment to search for (or press Enter for None): ")
+        if max_enrollment:
+            max_enrollment = f"[{max_enrollment}]"
+            
+        total_enrollment = input("Enter the total enrollment to search for (or press Enter for None): ")
+        if total_enrollment:
+            total_enrollment = f"[{total_enrollment}]"
+
         # Define the task for the Browser Use agent
         task = f"""
         Follow these steps precisely:
@@ -160,7 +189,7 @@ async def main():
         
         if there are multiple pages under SEAST, navigate to each page other page and extract the course information as per the previous field names
         
-        Return the data as a JSON array of course objects with these exact field names.
+        compile every single group of jsons you Return the data as a JSON array of course objects with these exact field names.
         """
 
         sensitive_data = {
