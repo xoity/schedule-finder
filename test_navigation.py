@@ -2,18 +2,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from browser_use import Agent
 from pydantic import SecretStr
 import os
-import asyncio
 from dotenv import load_dotenv
-import logging
-
 load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-)
-logger = logging.getLogger(__name__)
 
 api_key = os.getenv("GEMINI_API_KEY")
 
@@ -22,16 +12,18 @@ llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash-exp', api_key=SecretStr(os.
 
 # Create agent with the model
 agent = Agent(
-    task="open chrome and search for the best restaurants in Dubai and list their name and rating",
-    llm=llm
+    task="Go to google.com and search for 'weather today'. Find the current temperature and return it.",
+    llm=llm,
+
 )
 
-# Define async function to run the agent
-async def run_agent():
-    logger.info("Starting browser automation test...")
-    result = await agent.run()
-    logger.info("Task completed: %s", result)
-
-# Run the async function
-if __name__ == "__main__":
-    asyncio.run(run_agent())
+# Execute the agent
+try:
+    print("Starting browser navigation task...")
+    result = agent.run()
+    print("Task completed!")
+    print(f"Result: {result}")
+except Exception as e:
+    print(f"An error occurred during execution: {str(e)}")
+    import traceback
+    traceback.print_exc()

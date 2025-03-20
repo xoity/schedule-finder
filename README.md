@@ -65,16 +65,16 @@ If you don't have uv available:
 
 1. Create a virtual environment with Python 3.11 or higher:
 ```bash
-python3.11 -m venv .venv
+python -m venv .venv
 ```
 
 2. Activate the virtual environment (same activation commands as above)
 
 3. Install dependencies:
 ```bash
-pip install -r requirements.txt
-pip install browser-use
-playwright install
+$ pip install -r requirements.txt
+$ pip install browser-use
+$ playwright install
 ```
 
 ## API Key Setup
