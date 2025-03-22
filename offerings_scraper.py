@@ -1,6 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from browser_use import Agent, Controller
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, SecretStr, Field
 from typing import List
 import os
 import asyncio
@@ -96,7 +96,7 @@ async def main():
     try:
         # Use the API key directly without SecretStr wrapper
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp", google_api_key=api_key
+            model="gemini-2.0-flash-exp", api_key=SecretStr(os.getenv('GEMINI_API_KEY'))
         )
 
         username = input("Enter your CUD Portal username: ")
