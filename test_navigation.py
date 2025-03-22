@@ -1,29 +1,40 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from browser_use import Agent
-from pydantic import SecretStr
+import asyncio
 import os
+
 from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import SecretStr
+
+from browser_use import Agent, BrowserConfig
+from browser_use.browser.browser import Browser
+from browser_use.browser.context import BrowserContextConfig
+
 load_dotenv()
-
 api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise ValueError("GEMINI_API_KEY is not set")
 
-# Initialize the model
-llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash-exp', api_key=SecretStr(os.getenv('GEMINI_API_KEY')))
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", api_key=SecretStr(api_key))
 
-# Create agent with the model
-agent = Agent(
-    task="Go to google.com and search for 'weather today'. Find the current temperature and return it.",
-    llm=llm,
-
+browser = Browser(
+    config=BrowserConfig(
+        new_context_config=BrowserContextConfig(
+            viewport_expansion=0,
+        )
+    )
 )
 
-# Execute the agent
-try:
-    print("Starting browser navigation task...")
-    result = agent.run()
-    print("Task completed!")
-    print(f"Result: {result}")
-except Exception as e:
-    print(f"An error occurred during execution: {str(e)}")
-    import traceback
-    traceback.print_exc()
+
+async def run_search():
+    agent = Agent(
+        task="Go to amazon.com, search for laptop, sort by best rating, and give me the price of the first result",
+        llm=llm,
+        max_actions_per_step=4,
+        browser=browser,
+    )
+
+    await agent.run(max_steps=25)
+
+
+if __name__ == "__main__":
+    asyncio.run(run_search())

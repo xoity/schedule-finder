@@ -1,6 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from browser_use import Agent, Controller
-from pydantic import BaseModel, SecretStr, Field
+from pydantic import BaseModel, Field
 from typing import List
 import os
 import asyncio
@@ -48,7 +48,7 @@ def process_result(result):
     try:
         # Initialize an empty list to store all courses
         all_courses = []
-        
+
         # For AgentHistoryList result type
         if hasattr(result, "final_result"):
             # Get the final structured result
@@ -56,14 +56,14 @@ def process_result(result):
             if final_result:
                 # Parse the JSON result into our Pydantic model
                 return CourseOfferings.model_validate_json(final_result)
-        
+
         # Process all steps in the agent history to find extracted content
         if hasattr(result, "__iter__"):
             for step in result:
                 # Check for controller_response which contains extracted data
                 if hasattr(step, "controller_response") and step.controller_response:
                     response = str(step.controller_response)
-                    
+
                     # Look for JSON data in the response
                     json_match = re.search(r"```json\s*([\s\S]*?)\s*```", response)
                     if json_match:
@@ -74,40 +74,19 @@ def process_result(result):
                             if isinstance(courses_data, list):
                                 all_courses.extend(courses_data)
                         except Exception as e:
-                            logger.error(f"Error parsing JSON from step: {e}")
+                            logger.error("Error parsing JSON from step: %s", e)
                             continue
-        
+
         # Return the accumulated courses
         if all_courses:
             return CourseOfferings(courses=all_courses)
-        
-        # If we haven't found courses yet, try other methods
-        if hasattr(result, "get_all_output_messages"):
-            messages = result.get_all_output_messages()
-            for message in messages:
-                if hasattr(message, "content"):
-                    content = message.content
-                    # Try to extract JSON from content
-                    json_match = re.search(r"```json\s*([\s\S]*?)\s*```", content)
-                    if json_match:
-                        json_str = json_match.group(1)
-                        # Try to parse as CourseOfferings
-                        try:
-                            courses_data = json.loads(json_str)
-                            # If it's an array of courses, wrap it in the expected structure
-                            if isinstance(courses_data, list):
-                                all_courses.extend(courses_data)
-                        except Exception as e:
-                            logger.error(f"Error parsing JSON from message: {e}")
-            
-            if all_courses:
-                return CourseOfferings(courses=all_courses)
 
+        # If we haven't found courses yet, try other methods
         logger.error("Could not extract course data from agent result")
         return None
 
     except Exception as e:
-        logger.error(f"Error processing result: {e}")
+        logger.error("Error processing result: %s", e)
         logger.error(traceback.format_exc())
         return None
 
@@ -115,12 +94,14 @@ def process_result(result):
 # Main function to run the script
 async def main():
     try:
-        llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash-exp', api_key=SecretStr(os.getenv('GEMINI_API_KEY')))
+        # Use the API key directly without SecretStr wrapper
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp", google_api_key=api_key
+        )
 
         username = input("Enter your CUD Portal username: ")
         password = getpass.getpass("Enter your CUD Portal password: ")
 
-        # TODO: HELL NAH WHAT THE FUCK IS ALL THAT DOWN, FUCK NO WERE NOT HAVING THAT MUCH IF STATEMENTS, damn.. looking like a whole family tree bro
         # btw this is done to save on credits, but def not memory or cpu
 
         course_code = input(
@@ -135,11 +116,11 @@ async def main():
         if course_name:
             course_name = f"[{course_name}]"
 
-        credits = input(
+        creds = input(
             "Enter the number of credits to search for (or press Enter for None): "
         )
-        if credits:
-            credits = f"[{credits}]"
+        if creds:
+            creds = f"[{creds}]"
 
         instructor = input(
             "Enter the instructor name to search for (or press Enter for None): "
@@ -182,7 +163,7 @@ async def main():
         # Define the task for the Browser Use agent
         task = f"""
         Follow these steps precisely:
-        
+
         1. Navigate to https://cudportal.cud.ac.ae/student/login.asp
         2. Login with username and password provided
         3. Wait for the dashboard to load completely
@@ -197,7 +178,7 @@ async def main():
         12. Extract ALL course information from the table with these field names:
             - course_code {course_code}
             - course_name {course_name}
-            - credits {credits}
+            - credits {creds}
             - instructor {instructor}
             - room {room}
             - days {days}
@@ -205,13 +186,18 @@ async def main():
             - end_time {end_time}
             - max_enrollment {max_enrollment}
             - total_enrollment {total_enrollment}
-        13. Extract the information of page 1
-        14. Click on the next page button (page 2)
-        15. Extract the information of page 2
-        16. Combine all extracted course data into a single JSON array
-        
-        Return the complete data as a JSON array of course objects with these exact field names.
+
+        13. Repeat step 12 for the page 2 and 3 if available THEN STOP FOR 1 SECOND AND PROCEED TO THE NEXT STEP
+        14. Combine all extracted course data into a single JSON array
+
+
+
+        IMPORTANT: After extracting data from each page, always return the full set of course data you've collected so far.
+        Store the extracted course data after each page and maintain this data throughout the entire process.
+        Do not return an empty array when you're done
         """
+
+        # TODO: above is a possible use of system prompts.
 
         sensitive_data = {
             "user": username,
@@ -223,11 +209,14 @@ async def main():
 
         logger.info("Initializing browser automation agent...")
         agent = Agent(
-            task=task, llm=llm, sensitive_data=sensitive_data, controller=controller
+            task=task,
+            llm=llm,
+            sensitive_data=sensitive_data,
+            controller=controller,
         )
 
         logger.info("Starting course data extraction from CUD portal...")
-        result = await agent.run()
+        result = await agent.run(max_steps=100)
 
         # Process the result
         course_offerings = process_result(result)
@@ -242,21 +231,21 @@ async def main():
             # Save to results.csv as requested
             csv_path = os.path.join(os.path.dirname(__file__), "results.csv")
             df.to_csv(csv_path, index=False)
-            logger.info(f"Course data saved to {csv_path}")
+            logger.info("Course data saved to %s", csv_path)
 
             # Also save to Excel for convenience
             excel_path = os.path.join(
                 os.path.dirname(__file__), "course_offerings.xlsx"
             )
             df.to_excel(excel_path, index=False)
-            logger.info(f"Course data also saved to {excel_path}")
+            logger.info("Course data also saved to %s", excel_path)
 
-            logger.info(f"Retrieved {len(course_offerings.courses)} courses")
+            logger.info("Retrieved %d courses", len(course_offerings.courses))
         else:
             logger.error("No course data was extracted or there was an error.")
 
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error("Error: %s", e)
         logger.error(traceback.format_exc())
 
 
