@@ -2,4 +2,7 @@ browser-use
 pandas
 openpyxl
 pydantic
-langchain_model_genai
+langchain
+langchain-google-genai
+python-dotenv
+playwright

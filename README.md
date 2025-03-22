@@ -1,148 +1,106 @@
 # Schedule Finder
 
-A tool for automatically scraping and organizing course offerings from the Canadian University Dubai (CUD) portal.
+A tool to find and extract course offerings from the CUD Portal using browser automation.
 
-## Overview
+## Prerequisites
 
-Schedule Finder uses browser automation and AI to log into the CUD student portal, navigate to the course offerings page, and extract detailed information about available courses. The data is then saved in both CSV and Excel formats for easy analysis and planning.
+- Python 3.10+ (3.13 recommended)
+- Gemini API key (from Google AI Studio)
 
-## Features
+## Installation
 
-- Automated login to CUD student portal
-- Navigation to course offerings page
-- Filtering by division (currently configured for SEAST)
-- Data extraction of course details including:
-  - Course code and name
-  - Credits
-  - Instructor information
-  - Room assignments
-  - Schedule (days and times)
-  - Enrollment statistics
-- Output to both CSV and Excel formats
+### Linux
 
-## Requirements
+On Linux systems (particularly Arch-based distributions), you'll need to use a virtual environment due to the externally managed environment restrictions (PEP 668).
 
-- Python 3.11 or higher (Browser Use requirement)
-- Gemini API key (Google AI)
-- Playwright browser automation dependencies
-
-## Environment Setup
-
-### Using uv (Recommended)
-
-1. Create a virtual environment with Python 3.11 or higher:
 ```bash
-uv venv --python 3.11
-```
+# Create a virtual environment
+python -m venv venv
 
-2. Activate the virtual environment:
-```bash
-# For Mac/Linux:
-source .venv/bin/activate
+# Activate the virtual environment
+source venv/bin/activate
 
-# For Windows:
-.venv\Scripts\activate
-```
+# Install dependencies
+pip install -r requirements.txt
 
-3. Install dependencies using uv:
-```bash
-uv pip install browser-use
-```
-
-4. Install Playwright browser automation:
-```bash
+# Install Playwright browsers
 playwright install
 ```
 
-5. Install additional requirements:
+### Windows
+
+On Windows, you can install packages directly:
+
 ```bash
-uv pip install -r requirements.txt
+# Install dependencies
+pip install -r requirements.txt
+
+# Install Playwright browsers
+playwright install
 ```
 
-### Alternative setup with pip
+### macOS
 
-If you don't have uv available:
-
-1. Create a virtual environment with Python 3.11 or higher:
 ```bash
-python -m venv .venv
+# Create a virtual environment (recommended)
+python -m venv venv
+
+# Activate the virtual environment
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install Playwright browsers
+playwright install
 ```
 
-2. Activate the virtual environment (same activation commands as above)
+## Setting up your API Key
 
-3. Install dependencies:
-```bash
-$ pip install -r requirements.txt
-$ pip install browser-use
-$ playwright install
-```
+1. Go to [Google AI Studio](https://aistudio.google.com/)
+2. Create a new API key
+3. Create a `.env` file in the project root with the following content:
 
-## API Key Setup
-
-1. Create a `.env` file in the project root directory with your Gemini API key:
 ```
 GEMINI_API_KEY=your_api_key_here
 ```
 
-2. **Important**: The `.env` file contains sensitive information. It is already added to `.gitignore` to prevent accidental commits. Never share or commit your API key.
-
-3. If you need to obtain a Gemini API key:
-   - Go to the [Google AI Studio](https://ai.google.dev/)
-   - Create an account or sign in
-   - Navigate to the API keys section
-   - Generate a new API key
-   - Copy the key to your `.env` file
-
 ## Usage
 
-Run the main script:
+1. Activate your virtual environment (if using one)
+2. Run the script:
+
 ```bash
 python offerings_scraper.py
 ```
 
-You will be prompted to enter your CUD Portal username and password. The script will:
-1. Log into the portal
-2. Navigate to the course offerings page
-3. Apply the SEAST division filter
-4. Extract course data
-5. Save the data to `course_offerings.csv` and `course_offerings.xlsx`
-
-## Testing
-
-You can test basic browser automation functionality using:
-```bash
-python test_navigation.py
-```
-
-This will verify that your setup can perform simple browser automation tasks.
+3. Follow the prompts to enter your CUD Portal credentials and search criteria
+4. The results will be saved to `results.csv` and `course_offerings.xlsx`
 
 ## Troubleshooting
 
-If you encounter errors related to browser automation:
+### Externally Managed Environment Error
 
-1. Ensure you're using Python 3.11 or higher:
-```bash
-python --version
+If you see this error on Linux:
+
+```
+error: externally-managed-environment
 ```
 
-2. Verify Playwright is installed correctly:
-```bash
-playwright install --help
-```
+This means your Python installation is managed by the system package manager. Always use a virtual environment as described in the Linux installation instructions above.
 
-3. Check your Gemini API key is properly set in the `.env` file
+### Browser Installation Issues
 
-4. Make sure all dependencies are installed:
-```bash
-pip list | grep browser-use
-pip list | grep pandas
-```
+If you encounter issues with Playwright browser installation:
 
-5. If experiencing issues with missing browsers:
 ```bash
-playwright install
+# Try running with admin privileges
+sudo playwright install
+
+# Or specify the browser
+playwright install chromium
 ```
 
 ## License
 
-[MIT License](LICENSE)
+[MIT](LICENSE)
