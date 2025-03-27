@@ -371,227 +371,14 @@ with st.sidebar:
 
 # Main content
 if not st.session_state.authenticated:
-    st.title("📚 CUD Schedule Finder")
+    st.title("CUD Schedule Finder")
     st.info("Please log in using the sidebar to access the application.")
 else:
     # Create tabs for different functionalities
-    tab1, tab2, tab3 = st.tabs(
-        ["Chat Interface", "Browser Instructions", "Course Search"]
-    )
+    tab1, tab2 = st.tabs(["Browser Instructions", "Course Search"])
 
-    # Tab 1: Chat interface
+    # Tab 1: Browser Instructions
     with tab1:
-        st.header("Chat with Course Assistant")
-
-        # Display chat messages
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        # Chat input
-        prompt = st.chat_input(
-            "Ask about course offerings or request data extraction..."
-        )
-
-        if prompt:
-            # Add user message to chat history
-            st.session_state.messages.append({"role": "user", "content": prompt})
-
-            # Display user message
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            # Display assistant message
-            with st.chat_message("assistant"):
-                message_placeholder = st.empty()
-                message_placeholder.markdown("Thinking...")
-
-                try:
-                    if (
-                        "extract" in prompt.lower()
-                        or "scrape" in prompt.lower()
-                        or "get" in prompt.lower()
-                        or "find" in prompt.lower()
-                    ):
-                        # Process data extraction request
-                        message_placeholder.markdown(
-                            "Extracting course data from CUD Portal..."
-                        )
-
-                        # Create filters based on the prompt
-                        filters = {
-                            "course_code": None,
-                            "course_name": None,
-                            "credits": None,
-                            "instructor": None,
-                            "room": None,
-                            "days": None,
-                            "start_time": None,
-                            "end_time": None,
-                            "max_enrollment": None,
-                            "total_enrollment": None,
-                        }
-
-                        # Extract courses using the agent runner
-                        llm = ChatGoogleGenerativeAI(
-                            model="gemini-2.0-flash-exp",
-                            api_key=st.session_state.api_key,
-                        )
-
-                        # Create a wrapper for asyncio run
-                        @st.cache_data(ttl=3600)
-                        def run_agent_extraction(_username, _password, _prompt):
-                            runner = AgentRunner(
-                                llm=llm,
-                                username=_username,
-                                password=_password,
-                                filters=filters,
-                            )
-
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            offerings = loop.run_until_complete(runner.run())
-                            loop.close()
-
-                            if offerings and offerings.courses:
-                                df = pd.DataFrame(
-                                    [
-                                        course.model_dump()
-                                        for course in offerings.courses
-                                    ]
-                                )
-                                return df
-                            return None
-
-                        result_df = run_agent_extraction(
-                            st.session_state.username, st.session_state.password, prompt
-                        )
-
-                        if result_df is not None:
-                            st.session_state.courses_df = result_df
-                            message_placeholder.markdown(
-                                f"✅ Successfully extracted {len(result_df)} courses! "
-                                f"You can view and search the data in the 'Course Search' tab."
-                            )
-                        else:
-                            message_placeholder.markdown(
-                                "❌ Failed to extract course data. Please try again or check your credentials."
-                            )
-                    else:
-                        # Handle regular chat queries
-                        if st.session_state.courses_df is not None:
-                            df = st.session_state.courses_df
-
-                            if (
-                                "instructor" in prompt.lower()
-                                or "professor" in prompt.lower()
-                                or "teacher" in prompt.lower()
-                            ):
-                                # Find courses by instructor
-                                instructor_name = (
-                                    prompt.lower().split("instructor")[-1].strip()
-                                )
-                                if not instructor_name:
-                                    instructor_name = (
-                                        prompt.lower().split("professor")[-1].strip()
-                                    )
-                                if not instructor_name:
-                                    instructor_name = (
-                                        prompt.lower().split("teacher")[-1].strip()
-                                    )
-
-                                filtered_df = df[
-                                    df["instructor"]
-                                    .str.lower()
-                                    .str.contains(instructor_name)
-                                ]
-                                if not filtered_df.empty:
-                                    message_placeholder.markdown(
-                                        f"Found {len(filtered_df)} courses taught by instructors matching '{instructor_name}':"
-                                    )
-                                    st.dataframe(filtered_df)
-                                else:
-                                    message_placeholder.markdown(
-                                        f"No courses found for instructors matching '{instructor_name}'."
-                                    )
-
-                            elif "year" in prompt.lower():
-                                # Try to extract year number
-                                import re
-
-                                year_match = re.search(
-                                    r"(\d+)(?:st|nd|rd|th)?\s+year", prompt.lower()
-                                )
-                                if year_match:
-                                    year_num = year_match.group(1)
-                                    # In many universities, course codes often indicate year with the first digit
-                                    filtered_df = df[
-                                        df["course_code"].str.contains(
-                                            rf"{year_num}\d+"
-                                        )
-                                    ]
-                                    if not filtered_df.empty:
-                                        message_placeholder.markdown(
-                                            f"Found {len(filtered_df)} courses for year {year_num}:"
-                                        )
-                                        st.dataframe(filtered_df)
-                                    else:
-                                        message_placeholder.markdown(
-                                            f"No courses found for year {year_num}."
-                                        )
-                                else:
-                                    message_placeholder.markdown(
-                                        "Please specify which year you're interested in (e.g., 1st year, 2nd year)."
-                                    )
-
-                            elif any(
-                                keyword in prompt.lower()
-                                for keyword in ["code", "course code", "number"]
-                            ):
-                                # Find courses by course code
-                                code_query = prompt.lower()
-                                for prefix in ["code", "course code", "number"]:
-                                    if prefix in code_query:
-                                        code_query = code_query.split(prefix)[
-                                            -1
-                                        ].strip()
-
-                                filtered_df = df[
-                                    df["course_code"]
-                                    .str.lower()
-                                    .str.contains(code_query)
-                                ]
-                                if not filtered_df.empty:
-                                    message_placeholder.markdown(
-                                        f"Found {len(filtered_df)} courses with code containing '{code_query}':"
-                                    )
-                                    st.dataframe(filtered_df)
-                                else:
-                                    message_placeholder.markdown(
-                                        f"No courses found with code containing '{code_query}'."
-                                    )
-
-                            else:
-                                message_placeholder.markdown(
-                                    "I can help you search for courses by instructor, year, or course code. "
-                                    "Please specify what you're looking for or ask me to extract new course data."
-                                )
-                        else:
-                            message_placeholder.markdown(
-                                "No course data available. Please extract course data first by asking "
-                                "something like 'Extract course offerings from the CUD portal'."
-                            )
-
-                except Exception as e:
-                    message_placeholder.markdown(f"❌ Error: {str(e)}")
-
-                # Add assistant response to chat history
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": message_placeholder.markdown}
-                )
-
-    # Tab 2: Browser Instructions
-    with tab2:
         st.header("Run Custom Browser Instructions")
         st.markdown("""
         This tool lets you directly run browser automation instructions using natural language.
@@ -683,8 +470,8 @@ else:
                 status_container.error(f"Error running browser automation: {str(e)}")
                 st.error(traceback.format_exc())
 
-    # Tab 3: Course Search
-    with tab3:
+    # Tab 2: Course Search
+    with tab2:
         st.header("Course Search & Filter")
 
         if st.session_state.courses_df is not None:
@@ -752,8 +539,8 @@ else:
                     os.remove(excel_path)
         else:
             st.info(
-                "No course data available. Please extract course data first by using the Chat Interface tab "
-                "and asking something like 'Extract course offerings from the CUD portal'."
+                "No course data available. Please extract course data first by using the Browser Instructions tab "
+                "and running a data extraction instruction."
             )
 
             if st.button("Load Saved Data (if available)"):
@@ -765,4 +552,3 @@ else:
 
 # Footer
 st.markdown("---")
-st.markdown("© 2025 Schedule Finder | Built with Streamlit")
