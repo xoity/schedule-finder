@@ -102,7 +102,7 @@ For example, you can:
 ### Externally Managed Environment Error
 
 If you see this error on Linux:
-
+ 
 ```
 error: externally-managed-environment
 ```
