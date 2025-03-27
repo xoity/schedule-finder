@@ -1,4 +1,4 @@
-# Schedule Finder
+streamlit run app.py# Schedule Finder
 
 A tool to find and extract course offerings from the CUD Portal using browser automation.
 
@@ -67,15 +67,35 @@ GEMINI_API_KEY=your_api_key_here
 
 ## Usage
 
-1. Activate your virtual environment (if using one)
-2. Run the script:
+### Command Line Interface
+
+Run the command-line version:
 
 ```bash
 python offerings_scraper.py
 ```
 
-3. Follow the prompts to enter your CUD Portal credentials and search criteria
-4. The results will be saved to `results.csv` and `course_offerings.xlsx`
+Follow the prompts to enter your CUD Portal credentials and search criteria. The results will be saved to `results.csv` and `course_offerings.xlsx`.
+
+### Streamlit Web Interface (Recommended)
+
+For a more user-friendly experience, run the Streamlit web application:
+
+```bash
+streamlit run app.py
+```
+
+This will open a web browser with the Schedule Finder interface where you can:
+
+1. Log in with your CUD Portal credentials and Gemini API key
+2. Chat with the assistant to extract course data or search for specific information
+3. Browse, filter, and download course offerings data
+4. Search for courses by instructor, year, or course code
+
+For example, you can:
+- Ask "Extract all course offerings from the CUD portal" to scrape the data
+- Ask "Show me all courses taught by Dr. Said Elnaffar" to filter results
+- Ask "What courses are available for 2nd year students?" to get year-specific offerings
 
 ## Troubleshooting
 

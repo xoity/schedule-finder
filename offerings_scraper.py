@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-from browser_use import LoginError
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.agent_runner import AgentRunner
 from src.utils import get_filters_from_user, save_results
@@ -39,8 +38,8 @@ async def main():
         else:
             logger.warning("No course data extracted.")
 
-    except LoginError:
-        logger.error("Login failed: Invalid username or password.")
+    except Exception as e:
+        logger.error("Login failed: Invalid username or password.", e)
     except KeyboardInterrupt:
         logger.warning("Process interrupted by user.")
     except Exception as e:
