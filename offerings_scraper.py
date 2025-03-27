@@ -15,6 +15,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
+
 async def main():
     try:
         api_key = os.getenv("GEMINI_API_KEY")
@@ -27,7 +28,9 @@ async def main():
         password = getpass.getpass("Enter your CUD Portal password: ")
         filters = get_filters_from_user()
 
-        runner = AgentRunner(llm=llm, username=username, password=password, filters=filters)
+        runner = AgentRunner(
+            llm=llm, username=username, password=password, filters=filters
+        )
         logger.info("Running schedule extraction...")
 
         offerings: CourseOfferings = await runner.run()
@@ -44,6 +47,7 @@ async def main():
         logger.warning("Process interrupted by user.")
     except Exception as e:
         logger.error("Unhandled Exception: %s", e)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

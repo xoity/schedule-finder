@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List
 
+
 class Course(BaseModel):
     course_code: str = Field(description="The course code identifier")
     course_name: str = Field(description="The name of the course")
@@ -12,6 +13,7 @@ class Course(BaseModel):
     end_time: str = Field(description="End time of the course")
     max_enrollment: str = Field(description="Maximum enrollment allowed")
     total_enrollment: str = Field(description="Current total enrollment")
+
 
 class CourseOfferings(BaseModel):
     courses: List[Course] = Field(description="List of course offerings")
