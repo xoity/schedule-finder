@@ -1,5 +1,5 @@
 from browser_use import Agent, Controller
-from src.models import CourseOfferings, Course
+from src.models import CourseOfferings
 import re
 import json
 import logging
@@ -50,7 +50,7 @@ class AgentRunner:
         Store the extracted course data after each page and maintain this data throughout the entire process.
         Do not return an empty array when you're done.
 
-        Return the data in this format:
+        Return the data in this format (EXAMPLE):
         ```json
         {"courses": [
             {"course_code": "BCS101",

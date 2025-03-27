@@ -6,13 +6,11 @@ import json
 import re
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.agent_runner import AgentRunner
 from src.models import CourseOfferings
 from browser_use import Agent, BrowserConfig, Controller
 from browser_use.browser.browser import Browser
 from browser_use.browser.context import BrowserContextConfig
 from pydantic import SecretStr
-from src.utils import save_results
 import traceback
 import logging
 
