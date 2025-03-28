@@ -1,4 +1,4 @@
-streamlit run app.py# Schedule Finder
+# Schedule Finder
 
 A tool to find and extract course offerings from the CUD Portal using browser automation.
 
@@ -25,13 +25,12 @@ pip install -r requirements.txt
 
 # Install Playwright browsers
 playwright install
-```
 
 ### Windows
 
 On Windows, you can install packages directly:
 
-```bash
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -61,7 +60,7 @@ playwright install
 2. Create a new API key
 3. Create a `.env` file in the project root with the following content:
 
-```
+``` bash
 GEMINI_API_KEY=your_api_key_here
 ```
 
@@ -93,6 +92,7 @@ This will open a web browser with the Schedule Finder interface where you can:
 4. Search for courses by instructor, year, or course code
 
 For example, you can:
+
 - Ask "Extract all course offerings from the CUD portal" to scrape the data
 - Ask "Show me all courses taught by Dr. Said Elnaffar" to filter results
 - Ask "What courses are available for 2nd year students?" to get year-specific offerings
@@ -102,11 +102,11 @@ For example, you can:
 ### Externally Managed Environment Error
 
 If you see this error on Linux:
- 
-```
+
+``` plaintext
 error: externally-managed-environment
-```
- 
+
+
 This means your Python installation is managed by the system package manager. Always use a virtual environment as described in the Linux installation instructions above.
 
 ### Browser Installation Issues
