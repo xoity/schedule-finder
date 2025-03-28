@@ -4,8 +4,10 @@ import os
 import asyncio
 import json
 import re
+import requests
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_ollama import ChatOllama
 from src.models import CourseOfferings
 from browser_use import Agent, BrowserConfig, Controller
 from browser_use.browser.browser import Browser
@@ -68,6 +70,8 @@ if "courses_df" not in st.session_state:
     st.session_state.courses_df = None
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
+if "model_choice" not in st.session_state:
+    st.session_state.model_choice = "Gemini"
 
 
 # Function to load saved data if exists
@@ -83,9 +87,18 @@ def load_saved_data():
         return False
 
 
+# Function to check if Ollama is running
+def is_ollama_running():
+    try:
+        response = requests.get("http://localhost:11434/api/version", timeout=2)
+        return response.status_code == 200
+    except requests.exceptions.RequestException:
+        return False
+
+
 # Function to run direct browser-use instructions
 async def run_browser_instruction(
-    instruction, username, password, api_key, use_structured_output=False
+    instruction, username, password, api_key, use_structured_output=False, model_choice="Gemini"
 ):
     try:
         # Initialize the browser with default configuration
@@ -97,10 +110,16 @@ async def run_browser_instruction(
             )
         )
 
-        # Initialize LLM
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp", api_key=SecretStr(api_key)
-        )
+        # Initialize LLM based on model choice
+        if model_choice == "Ollama":
+            if not is_ollama_running():
+                return "Error: Ollama is not running. Please start Ollama and try again."
+            
+            llm = ChatOllama(model="qwen2.5", num_ctx=32000)
+        else:  # Default to Gemini
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-2.0-flash-exp", api_key=SecretStr(api_key)
+            )
 
         if use_structured_output and "extract" in instruction.lower():
             # Use structured output for extraction tasks
@@ -326,7 +345,7 @@ with st.sidebar:
                 value=st.session_state.api_key,
                 key="input_api_key",
                 type="password",
-                help="Enter your Gemini API key",
+                help="Enter your Gemini API key (only needed for Gemini model)",
             )
             st.text_input(
                 "CUD Portal Username",
@@ -334,25 +353,39 @@ with st.sidebar:
                 key="input_username",
             )
             st.text_input("CUD Portal Password", key="input_password", type="password")
+            
+            # Model selection dropdown
+            model_options = ["Gemini", "Ollama"]
+            selected_model = st.selectbox(
+                "Choose LLM Model",
+                options=model_options,
+                index=model_options.index("Gemini"),
+                help="Select Gemini (cloud) or Ollama Qwen2.5 (local)"
+            )
 
             submit_button = st.form_submit_button("Login")
 
             if submit_button:
-                if (
-                    st.session_state.input_api_key
-                    and st.session_state.input_username
-                    and st.session_state.input_password
+                # Check if we need to validate Ollama
+                if selected_model == "Ollama" and not is_ollama_running():
+                    st.error("Ollama not running. Please start Ollama and try again.")
+                elif (
+                    (selected_model == "Gemini" and st.session_state.input_api_key and st.session_state.input_username and st.session_state.input_password) or
+                    (selected_model == "Ollama" and st.session_state.input_username and st.session_state.input_password)
                 ):
                     st.session_state.api_key = st.session_state.input_api_key
                     st.session_state.username = st.session_state.input_username
                     st.session_state.password = st.session_state.input_password
+                    st.session_state.model_choice = selected_model
                     st.session_state.authenticated = True
                     st.success("Authentication successful!")
                     st.rerun()
                 else:
-                    st.error("Please fill all the authentication fields")
+                    required_fields = "username and password" if selected_model == "Ollama" else "API key, username, and password"
+                    st.error(f"Please fill all required fields: {required_fields}")
     else:
         st.success(f"Logged in as: {st.session_state.username}")
+        st.info(f"Using model: {st.session_state.model_choice}")
         if st.button("Logout"):
             st.session_state.authenticated = False
             st.session_state.username = ""
@@ -428,6 +461,7 @@ else:
                         password=st.session_state.password,
                         api_key=st.session_state.api_key,
                         use_structured_output=structured_output,
+                        model_choice=st.session_state.model_choice,
                     )
                 )
                 loop.close()
@@ -550,4 +584,3 @@ else:
 
 # Footer
 st.markdown("---")
-  
