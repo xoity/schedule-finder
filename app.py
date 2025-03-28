@@ -122,7 +122,7 @@ async def run_browser_instruction(
                     "Error: Ollama is not running. Please start Ollama and try again."
                 )
 
-            llm = ChatOllama(model="qwen2.5", num_ctx=32000)
+            llm = ChatOllama(model="llama3", num_ctx=32000)
         else:  # Default to Gemini
             llm = ChatGoogleGenerativeAI(
                 model="gemini-2.0-flash-exp", api_key=SecretStr(api_key)
