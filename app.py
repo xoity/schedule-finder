@@ -98,7 +98,12 @@ def is_ollama_running():
 
 # Function to run direct browser-use instructions
 async def run_browser_instruction(
-    instruction, username, password, api_key, use_structured_output=False, model_choice="Gemini"
+    instruction,
+    username,
+    password,
+    api_key,
+    use_structured_output=False,
+    model_choice="Gemini",
 ):
     try:
         # Initialize the browser with default configuration
@@ -113,8 +118,10 @@ async def run_browser_instruction(
         # Initialize LLM based on model choice
         if model_choice == "Ollama":
             if not is_ollama_running():
-                return "Error: Ollama is not running. Please start Ollama and try again."
-            
+                return (
+                    "Error: Ollama is not running. Please start Ollama and try again."
+                )
+
             llm = ChatOllama(model="qwen2.5", num_ctx=32000)
         else:  # Default to Gemini
             llm = ChatGoogleGenerativeAI(
@@ -338,6 +345,8 @@ with st.sidebar:
     # Authentication section
     st.subheader("Authentication")
 
+    # TODO: link to cud's api to ACTUALLY authenticate users
+
     if not st.session_state.authenticated:
         with st.form("auth_form"):
             st.text_input(
@@ -353,14 +362,14 @@ with st.sidebar:
                 key="input_username",
             )
             st.text_input("CUD Portal Password", key="input_password", type="password")
-            
+
             # Model selection dropdown
             model_options = ["Gemini", "Ollama"]
             selected_model = st.selectbox(
                 "Choose LLM Model",
                 options=model_options,
                 index=model_options.index("Gemini"),
-                help="Select Gemini (cloud) or Ollama Qwen2.5 (local)"
+                help="Select Gemini (cloud) or Ollama Qwen2.5 (local)",
             )
 
             submit_button = st.form_submit_button("Login")
@@ -370,8 +379,14 @@ with st.sidebar:
                 if selected_model == "Ollama" and not is_ollama_running():
                     st.error("Ollama not running. Please start Ollama and try again.")
                 elif (
-                    (selected_model == "Gemini" and st.session_state.input_api_key and st.session_state.input_username and st.session_state.input_password) or
-                    (selected_model == "Ollama" and st.session_state.input_username and st.session_state.input_password)
+                    selected_model == "Gemini"
+                    and st.session_state.input_api_key
+                    and st.session_state.input_username
+                    and st.session_state.input_password
+                ) or (
+                    selected_model == "Ollama"
+                    and st.session_state.input_username
+                    and st.session_state.input_password
                 ):
                     st.session_state.api_key = st.session_state.input_api_key
                     st.session_state.username = st.session_state.input_username
@@ -381,7 +396,11 @@ with st.sidebar:
                     st.success("Authentication successful!")
                     st.rerun()
                 else:
-                    required_fields = "username and password" if selected_model == "Ollama" else "API key, username, and password"
+                    required_fields = (
+                        "username and password"
+                        if selected_model == "Ollama"
+                        else "API key, username, and password"
+                    )
                     st.error(f"Please fill all required fields: {required_fields}")
     else:
         st.success(f"Logged in as: {st.session_state.username}")
