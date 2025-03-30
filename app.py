@@ -136,7 +136,7 @@ async def run_browser_instruction(
             agent = Agent(
                 task=instruction,
                 llm=llm,
-                max_actions_per_step=4,
+                max_actions_per_step=10,
                 browser=browser,
                 sensitive_data={"user": username, "password": password},
                 controller=controller,
@@ -146,7 +146,7 @@ async def run_browser_instruction(
             agent = Agent(
                 task=instruction,
                 llm=llm,
-                max_actions_per_step=4,
+                max_actions_per_step=10,
                 browser=browser,
                 sensitive_data={"user": username, "password": password},
             )
