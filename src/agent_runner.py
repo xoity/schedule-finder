@@ -49,25 +49,6 @@ class AgentRunner:
         IMPORTANT: After extracting data from each page, always return the full set of course data you've collected so far.
         Store the extracted course data after each page and maintain this data throughout the entire process.
         Do not return an empty array when you're done.
-
-        Return the data in this format (EXAMPLE):
-        ```json
-        {"courses": [
-            {"course_code": "BCS101",
-              "course_name": "Introduction to Computing",
-              "credits": "3",
-              "instructor": "Instructor Name",
-              "room": "Room Number",
-              "days": "M",
-              "start_time": "10:00 AM",
-              "end_time": "11:00 AM",
-              "max_enrollment": "30",
-              "total_enrollment": "25"
-            },
-            ...more courses...
-          ]
-        }
-        ```
         """
         return task
 
