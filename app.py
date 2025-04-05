@@ -466,14 +466,11 @@ else:
             status_container.info("Starting browser automation...")
 
             try:
-                # Create a new event loop and run the browser instruction
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
+                # Use asyncio.run 
                 status_container.info(
                     "Browser automation running... This may take a minute."
                 )
-                result = loop.run_until_complete(
+                result = asyncio.run(
                     run_browser_instruction(
                         instruction=instruction,
                         username=st.session_state.username,
@@ -483,7 +480,6 @@ else:
                         model_choice=st.session_state.model_choice,
                     )
                 )
-                loop.close()
 
                 # Display result
                 status_container.success("Browser automation completed!")
