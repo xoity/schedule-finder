@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import polars as pl
 import os
 import asyncio
 import json
@@ -15,6 +15,7 @@ from browser_use.browser.context import BrowserContextConfig
 from pydantic import SecretStr
 import traceback
 import logging
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -78,7 +79,7 @@ if "model_choice" not in st.session_state:
 def load_saved_data():
     try:
         if os.path.exists("results.csv"):
-            df = pd.read_csv("results.csv")
+            df = pl.read_csv("results.csv")
             st.session_state.courses_df = df
             return True
         return False
@@ -178,16 +179,18 @@ def extract_and_save_data_from_result(result):
                     # Try to directly parse the final result
                     courses_obj = CourseOfferings.model_validate_json(final_result)
                     if courses_obj and courses_obj.courses:
-                        df = pd.DataFrame(
-                            [course.model_dump() for course in courses_obj.courses]
-                        )
+                        # Convert to polars DataFrame
+                        df = pl.DataFrame([course.model_dump() for course in courses_obj.courses])
 
                         # Save to CSV and Excel
                         csv_path = os.path.join(os.getcwd(), "results.csv")
                         excel_path = os.path.join(os.getcwd(), "course_offerings.xlsx")
 
-                        df.to_csv(csv_path, index=False)
-                        df.to_excel(excel_path, index=False)
+                        df.write_csv(csv_path)
+                        
+                        # Convert to pandas first for Excel export
+                        pd_df = df.to_pandas()
+                        pd_df.to_excel(excel_path, index=False)
 
                         return (
                             df,
@@ -286,7 +289,7 @@ def extract_and_save_data_from_result(result):
 
         # Process the collected data
         if courses_obj and courses_obj.courses:
-            df = pd.DataFrame([course.model_dump() for course in courses_obj.courses])
+            df = pl.DataFrame([course.model_dump() for course in courses_obj.courses])
         elif all_courses:
             # Try to standardize field names for consistency
             standardized_courses = []
@@ -319,7 +322,7 @@ def extract_and_save_data_from_result(result):
                         standardized[key] = value
                 standardized_courses.append(standardized)
 
-            df = pd.DataFrame(standardized_courses)
+            df = pl.DataFrame(standardized_courses)
         else:
             return None, "Could not extract structured data from the automation results"
 
@@ -327,8 +330,11 @@ def extract_and_save_data_from_result(result):
         csv_path = os.path.join(os.getcwd(), "results.csv")
         excel_path = os.path.join(os.getcwd(), "course_offerings.xlsx")
 
-        df.to_csv(csv_path, index=False)
-        df.to_excel(excel_path, index=False)
+        df.write_csv(csv_path)
+        
+        # Convert to pandas for Excel export
+        pd_df = df.to_pandas()
+        pd_df.to_excel(excel_path, index=False)
 
         return df, f"✅ Successfully saved {len(df)} records to CSV and Excel files!"
 
@@ -529,32 +535,30 @@ else:
 
             with col1:
                 # Filter by course code
-                course_codes = ["All"] + sorted(df["course_code"].unique().tolist())
+                course_codes = ["All"] + sorted(df["course_code"].unique().to_list())
                 selected_code = st.selectbox("Filter by Course Code", course_codes)
 
             with col2:
                 # Filter by instructor
-                instructors = ["All"] + sorted(df["instructor"].unique().tolist())
+                instructors = ["All"] + sorted(df["instructor"].unique().to_list())
                 selected_instructor = st.selectbox("Filter by Instructor", instructors)
 
             with col3:
                 # Filter by days
-                days_options = ["All"] + sorted(df["days"].unique().tolist())
+                days_options = ["All"] + sorted(df["days"].unique().to_list())
                 selected_days = st.selectbox("Filter by Days", days_options)
 
             # Apply filters
-            filtered_df = df.copy()
+            filtered_df = df.clone()
 
             if selected_code != "All":
-                filtered_df = filtered_df[filtered_df["course_code"] == selected_code]
+                filtered_df = filtered_df.filter(pl.col("course_code") == selected_code)
 
             if selected_instructor != "All":
-                filtered_df = filtered_df[
-                    filtered_df["instructor"] == selected_instructor
-                ]
+                filtered_df = filtered_df.filter(pl.col("instructor") == selected_instructor)
 
             if selected_days != "All":
-                filtered_df = filtered_df[filtered_df["days"] == selected_days]
+                filtered_df = filtered_df.filter(pl.col("days") == selected_days)
 
             # Display filtered data
             st.subheader(f"Results ({len(filtered_df)} courses)")
@@ -563,7 +567,12 @@ else:
             # Download options
             col1, col2 = st.columns(2)
             with col1:
-                csv_data = filtered_df.to_csv(index=False).encode("utf-8")
+
+                # done due to csv parsing errors
+                csv_buffer = io.StringIO()
+                filtered_df.write_csv(csv_buffer)
+                csv_data = csv_buffer.getvalue().encode("utf-8")
+
                 st.download_button(
                     label="Download as CSV",
                     data=csv_data,
@@ -571,9 +580,10 @@ else:
                     mime="text/csv",
                 )
             with col2:
-                excel_data = filtered_df.copy()
+                # Convert to pandas for Excel export
                 excel_path = "filtered_courses.xlsx"
-                excel_data.to_excel(excel_path, index=False)
+                pd_df = filtered_df.to_pandas()
+                pd_df.to_excel(excel_path, index=False)
                 with open(excel_path, "rb") as f:
                     st.download_button(
                         label="Download as Excel",
