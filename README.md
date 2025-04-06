@@ -105,8 +105,7 @@ If you see this error on Linux:
 
 ``` plaintext
 error: externally-managed-environment
-
-
+```
 This means your Python installation is managed by the system package manager. Always use a virtual environment as described in the Linux installation instructions above.
 
 ### Browser Installation Issues
